@@ -4,8 +4,14 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.database import add_or_update_user, create_order, update_order_receipt, get_user_orders
-from bot.keyboards import main_keyboard, plans_keyboard, get_admin_receipt_keyboard
+from bot.database import (
+    add_or_update_user,
+    create_order,
+    update_order_receipt,
+    get_user_orders,
+    count_pending_orders
+)
+from bot.keyboards import main_keyboard, plans_keyboard
 
 user_router = Router()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
@@ -39,7 +45,6 @@ async def process_plan_selection(callback: types.CallbackQuery, state: FSMContex
     if not user or not callback.message or not callback.data:
         return
 
-    # چک کردن نوع پیام برای رفع خطای InaccessibleMessage در Pylance
     if not isinstance(callback.message, types.Message):
         return
 
@@ -68,6 +73,7 @@ async def process_plan_selection(callback: types.CallbackQuery, state: FSMContex
     )
     await callback.message.edit_text(text, parse_mode="Markdown")
     await callback.answer()
+
 @user_router.message(BuyState.waiting_for_receipt, F.photo)
 async def process_receipt(message: types.Message, state: FSMContext):
     user = message.from_user
@@ -92,18 +98,19 @@ async def process_receipt(message: types.Message, state: FSMContext):
     await message.answer("✅ فیش واریزی شما دریافت شد و برای ادمین ارسال گردید.")
     
     if ADMIN_ID != 0:
-        caption = (
-            f"📥 **سفارش جدید #{order_id}**\n\n"
-            f"👤 کاربر: {user.full_name} (@{user.username})\n"
-            f"🆔 شناسه: `{user.id}`"
-        )
-        await bot.send_photo(
-            chat_id=ADMIN_ID,
-            photo=photo_id,
-            caption=caption,
-            reply_markup=get_admin_receipt_keyboard(order_id, user.id),
-            parse_mode="Markdown"
-        )
+        pending_count = await count_pending_orders()
+        try:
+            await bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    f"🔔 **سفارش جدید ثبت شد!**\n\n"
+                    f"تعداد سفارش‌های در انتظار پردازش: **{pending_count} سفارش**\n"
+                    f"جهت بررسی، از منوی پنل مدیریت روی دکمه «📥 سفارش‌های در انتظار» کلیک کنید."
+                ),
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            print(f"Notification error: {e}")
 
 @user_router.message(F.text == "👤 حساب کاربری / سرویس‌های من")
 async def show_account(message: types.Message):

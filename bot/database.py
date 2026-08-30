@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 from sqlalchemy import BigInteger, String, DateTime, func, select, update
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -41,9 +40,7 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-# استفاده از str | None به جای str
-async def add_or_update_user(telegram_id: int, username: str | None = None, full_name: str | None = None):
-   
+async def add_or_update_user(telegram_id: int, username: str = "", full_name: str = ""):
     async with async_session() as session:
         result = await session.execute(select(User).where(User.telegram_id == telegram_id))
         user = result.scalar_one_or_none()
@@ -92,3 +89,29 @@ async def get_user_orders(user_id: int):
             select(Order).where(Order.user_id == user_id, Order.status == "completed")
         )
         return result.scalars().all()
+
+async def get_next_pending_order():
+    async with async_session() as session:
+        result = await session.execute(
+            select(Order)
+            .where(Order.status == "pending_config")
+            .order_by(Order.created_at.asc())
+        )
+        return result.scalars().first()
+
+async def get_recent_completed_orders(limit: int = 10):
+    async with async_session() as session:
+        result = await session.execute(
+            select(Order)
+            .where(Order.status == "completed")
+            .order_by(Order.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+async def count_pending_orders() -> int:
+    async with async_session() as session:
+        result = await session.execute(
+            select(func.count(Order.id)).where(Order.status == "pending_config")
+        )
+        return result.scalar() or 0
