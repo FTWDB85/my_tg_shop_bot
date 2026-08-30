@@ -12,6 +12,7 @@ from bot.database import (
     count_pending_orders
 )
 from bot.keyboards import main_keyboard, plans_keyboard
+from bot.keyboards import admin_main_keyboard
 
 user_router = Router()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
@@ -114,19 +115,20 @@ async def process_receipt(message: types.Message, state: FSMContext):
     await message.answer("✅ فیش واریزی شما دریافت شد و برای ادمین ارسال گردید.")
     
     if ADMIN_ID != 0:
-        pending_count = await count_pending_orders()
         try:
+            pending_count = await count_pending_orders()
             await bot.send_message(
-                chat_id=ADMIN_ID,
-                text=(
-                    f"🔔 **سفارش جدید ثبت شد!**\n\n"
-                    f"تعداد سفارش‌های در انتظار پردازش: **{pending_count} سفارش**\n"
-                    f"جهت بررسی، از منوی پنل مدیریت روی دکمه «📥 سفارش‌های در انتظار» کلیک کنید."
-                ),
-                parse_mode="Markdown"
-            )
+            chat_id=ADMIN_ID,
+            text=(
+                f"🔔 <b>سفارش جدید ثبت شد!</b>\n\n"
+                f"تعداد سفارش‌های در انتظار پردازش: <b>{pending_count} سفارش</b>\n"
+                f"جهت بررسی، از منوی زیر روی دکمه «📥 سفارش‌های در انتظار» کلیک کنید."
+            ),
+            reply_markup=admin_main_keyboard,  # ارسال مستقیم کیبورد ادمین همراه با نوتیفیکیشن
+            parse_mode="HTML"
+        )
         except Exception as e:
-            print(f"Notification error: {e}")
+           print(f"Notification error: {e}")
 
 @user_router.message(F.text == "👤 حساب کاربری / سرویس‌های من")
 async def show_account(message: types.Message):
