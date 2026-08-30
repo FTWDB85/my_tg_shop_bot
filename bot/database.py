@@ -103,12 +103,25 @@ async def get_user_orders(user_id: int):
 async def get_next_pending_order():
     async with async_session() as session:
         result = await session.execute(
-            select(Order)
-            .where(Order.status == "pending_config")
-            .order_by(Order.created_at.asc())
+            select(Order).where(Order.status == "pending_config").order_by(Order.id.asc())
         )
-        return result.scalars().first()
+        order = result.scalars().first()
+        if order:
+            created_str = "نامشخص"
+            if order.created_at is not None:
+                # تبدیل صریح به str برای راضی کردن تایپ‌چکر Pylance
+                created_str = str(order.created_at).split(".")[0]
 
+            return {
+                "id": order.id,
+                "user_id": order.user_id,
+                "username": order.username,
+                "plan_name": order.plan_name,
+                "price": order.price,
+                "receipt_file_id": order.receipt_file_id,
+                "created_at": created_str
+            }
+        return None
 async def get_recent_completed_orders(limit: int = 10):
     async with async_session() as session:
         result = await session.execute(
