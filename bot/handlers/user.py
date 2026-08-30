@@ -13,6 +13,8 @@ from bot.database import (
 )
 from bot.keyboards import main_keyboard, plans_keyboard
 from bot.keyboards import admin_main_keyboard
+from aiogram.fsm.context import FSMContext
+from bot.keyboards import main_keyboard
 
 user_router = Router()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
@@ -20,6 +22,16 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 class BuyState(StatesGroup):
     waiting_for_receipt = State()
 
+@user_router.message(F.text == "❌ لغو")
+async def cancel_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        await message.answer("عملیاتی برای لغو وجود ندارد.", reply_markup=main_keyboard)
+        return
+
+    await state.clear()
+    await message.answer("❌ عملیات جاری لغو شد. به منوی اصلی بازگشتید.", reply_markup=main_keyboard)
+    
 @user_router.message(CommandStart())
 async def cmd_start(message: types.Message):
     user = message.from_user
