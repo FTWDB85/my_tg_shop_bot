@@ -12,6 +12,7 @@ from bot.handlers.admin import admin_router
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+PROXY_URL = os.getenv("PROXY_URL")  # دریافت آدرس پروکسی از متغیرهای محیطی
 
 if not BOT_TOKEN:
     raise ValueError("توکن ربات (BOT_TOKEN) در فایل .env تعریف نشده است!")
@@ -21,11 +22,15 @@ async def main():
     
     init_db()
     
-    # اگر از پروکسی سیستم استفاده می‌کنید (مثلا V2Ray پورت HTTP یا SOCKS5)
-    # پورت 10809 برای HTTP پروکسی V2Ray/v2rayN است
-    session = AiohttpSession(proxy="http://127.0.0.1:10808")
-    
-    bot = Bot(token=str(BOT_TOKEN), session=session)
+    # بررسی وجود پروکسی برای تنظیم شیء Bot
+    if PROXY_URL:
+        session = AiohttpSession(proxy=PROXY_URL)
+        bot = Bot(token=str(BOT_TOKEN), session=session)
+        print(f"Bot starting with proxy: {PROXY_URL}")
+    else:
+        bot = Bot(token=str(BOT_TOKEN))
+        print("Bot starting with direct connection (No proxy)")
+
     dp = Dispatcher()
     
     dp.include_router(admin_router)
