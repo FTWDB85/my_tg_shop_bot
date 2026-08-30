@@ -31,7 +31,13 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer("❌ عملیات جاری لغو شد. به منوی اصلی بازگشتید.", reply_markup=main_keyboard)
-    
+@user_router.callback_query(F.data == "cancel_order")
+async def cancel_order_callback(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.answer("عملیات لغو شد.")
+    if isinstance(callback.message, types.Message):
+        await callback.message.answer("❌ سفارش لغو شد. به منوی اصلی بازگشتید.", reply_markup=main_keyboard)
+        
 @user_router.message(CommandStart())
 async def cmd_start(message: types.Message):
     user = message.from_user
