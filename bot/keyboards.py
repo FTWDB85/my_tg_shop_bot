@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+
 # منوی اصلی کاربر
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -16,7 +17,7 @@ plans_keyboard = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="🚀 ۱ ماهه - 10 گیگابایت | 45,000 تومان", callback_data="buy_plan:1month_10gb:45000")],
         [InlineKeyboardButton(text="🚀 ۱ ماهه - 20 گیگابایت | 90,000 تومان", callback_data="buy_plan:1month_20gb:90000")],
         [InlineKeyboardButton(text="🚀 ۲ ماهه - 100 گیگابایت | 350,000 تومان", callback_data="buy_plan:2month_100gb:350000")],
-        [InlineKeyboardButton(text="❌ انصراف", callback_data="cancel_buy")]
+        [InlineKeyboardButton(text="❌ انصراف", callback_data="cancel_order")]
     ]
 )
 
