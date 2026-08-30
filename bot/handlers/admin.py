@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any
+from typing import Any
 from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -41,7 +41,6 @@ async def show_pending_orders(message: types.Message):
             await message.answer("🎉 هیچ سفارشی در صف انتظار وجود ندارد!")
             return
 
-        # استخراج ایمن داده‌ها فارغ از اینکه خروجی Dict است یا مدل دیتابیس
         if isinstance(order, dict):
             order_id = int(order.get('id', 0))
             username = str(order.get('username', ''))
@@ -87,6 +86,7 @@ async def show_pending_orders(message: types.Message):
         traceback.print_exc()
         await message.answer(f"⚠️ خطایی در نمایش سفارش رخ داد: {e}")
 
+# ---------- بخش ارسال کانفیگ ----------
 @admin_router.callback_query(F.data.startswith("process_send_config:"))
 async def start_send_config(callback: types.CallbackQuery, state: FSMContext):
     if not callback.from_user or callback.from_user.id != ADMIN_ID or not callback.data:
@@ -150,6 +150,64 @@ async def process_and_deliver_config(message: types.Message, state: FSMContext):
     except Exception as e:
         await message.reply(f"⚠️ کانفیگ در دیتابیس ثبت شد اما ارسال به کاربر با خطا مواجه شد: {e}")
 
+# ---------- بخش رد سفارش ----------
+@admin_router.callback_query(F.data.startswith("process_reject:"))
+async def start_reject_order(callback: types.CallbackQuery, state: FSMContext):
+    if not callback.from_user or callback.from_user.id != ADMIN_ID or not callback.data:
+        return
+
+    try:
+        order_id = int(callback.data.split(":")[1])
+        order: Any = await get_order(order_id)
+
+        if not order:
+            await callback.answer("⚠️ سفارش یافت نشد!", show_alert=True)
+            return
+
+        if isinstance(order, dict):
+            user_id = int(order.get('user_id', 0))
+        else:
+            user_id = int(getattr(order, 'user_id', 0))
+
+        await state.update_data(current_order_id=order_id, target_user_id=user_id)
+        await state.set_state(AdminProcessState.waiting_for_reject_reason)
+
+        if isinstance(callback.message, types.Message):
+            await callback.message.answer(
+                f"❌ در حال رد سفارش #{order_id}.\n"
+                f"لطفاً <b>دلیل رد سفارش</b> (مثلاً: فیش واریزی نامعتبر است) را ارسال کنید:",
+                parse_mode="HTML"
+            )
+        await callback.answer()
+    except Exception as e:
+        print(f"Error in start_reject_order: {e}")
+        await callback.answer("⚠️ خطایی رخ داد.", show_alert=True)
+
+@admin_router.message(AdminProcessState.waiting_for_reject_reason, F.text)
+async def process_and_reject_order(message: types.Message, state: FSMContext):
+    if not message.from_user or message.from_user.id != ADMIN_ID or not message.bot or not message.text:
+        return
+
+    data = await state.get_data()
+    order_id = int(data.get("current_order_id", 0))
+    user_id = int(data.get("target_user_id", 0))
+    reject_reason = message.text.strip()
+
+    await set_order_completed(order_id=order_id, config_link=f"REJECTED: {reject_reason}")
+    await state.clear()
+
+    try:
+        user_msg = (
+            f"❌ <b>سفارش #{order_id} شما رد شد.</b>\n\n"
+            f"💬 <b>دلیل رد سفارش:</b>\n{reject_reason}\n\n"
+            f"در صورت نیاز به پشتیبانی پیام دهید."
+        )
+        await message.bot.send_message(chat_id=user_id, text=user_msg, parse_mode="HTML")
+        await message.reply(f"🚫 سفارش #{order_id} رد شد و علت آن به کاربر اطلاع داده شد.")
+    except Exception as e:
+        await message.reply(f"⚠️ وضعیت رد سفارش ثبت شد اما ارسال پیام به کاربر با خطا مواجه شد: {e}")
+
+# ---------- بخش سفارش‌های تایید شده ----------
 @admin_router.message(F.text == "✅ سفارش‌های تایید شده")
 async def show_completed_orders(message: types.Message):
     if not message.from_user or message.from_user.id != ADMIN_ID:
@@ -180,58 +238,3 @@ async def show_completed_orders(message: types.Message):
     except Exception as e:
         print(f"Error in show_completed_orders: {e}")
         await message.answer("⚠️ خطایی در دریافت سفارش‌های تایید شده رخ داد.")
-
-@admin_router.callback_query(F.data.startswith("process_reject:"))
-async def start_reject_order(callback: types.CallbackQuery, state: FSMContext):
-    if not callback.from_user or callback.from_user.id != ADMIN_ID or not callback.data:
-        return
-
-    try:
-        order_id = int(callback.data.split(":")[1])
-        order: Any = await get_order(order_id)
-
-        if not order:
-            await callback.answer("⚠️ سفارش یافت نشد!", show_alert=True)
-            return
-
-        user_id = int(order.get('user_id', 0)) if isinstance(order, dict) else int(getattr(order, 'user_id', 0))
-
-        await state.update_data(current_order_id=order_id, target_user_id=user_id)
-        await state.set_state(AdminProcessState.waiting_for_reject_reason)
-
-        if isinstance(callback.message, types.Message):
-            await callback.message.answer(
-                f"❌ در حال رد سفارش #{order_id}.\n"
-                f"لطفاً <b>دلیل رد سفارش</b> (مثلاً: فیش واریزی نامعتبر است) را ارسال کنید:",
-                parse_mode="HTML"
-            )
-        await callback.answer()
-    except Exception as e:
-        print(f"Error in start_reject_order: {e}")
-        await callback.answer("⚠️ خطایی رخ داد.", show_alert=True)
-
-
-@admin_router.message(AdminProcessState.waiting_for_reject_reason, F.text)
-async def process_and_reject_order(message: types.Message, state: FSMContext):
-    if not message.from_user or message.from_user.id != ADMIN_ID or not message.bot or not message.text:
-        return
-
-    data = await state.get_data()
-    order_id = int(data.get("current_order_id", 0))
-    user_id = int(data.get("target_user_id", 0))
-    reject_reason = message.text.strip()
-
-    # ویرایش وضعیت سفارش در دیتابیس (کانفیگ خالی و وضعیت rejected)
-    await set_order_completed(order_id=order_id, config_link=f"REJECTED: {reject_reason}")
-    await state.clear()
-
-    try:
-        user_msg = (
-            f"❌ <b>سفارش #{order_id} شما رد شد.</b>\n\n"
-            f"💬 <b>دلیل رد سفارش:</b>\n{reject_reason}\n\n"
-            f"در صورت نیاز به پشتیبانی پیام دهید."
-        )
-        await message.bot.send_message(chat_id=user_id, text=user_msg, parse_mode="HTML")
-        await message.reply(f"🚫 سفارش #{order_id} رد شد و علت آن به کاربر اطلاع داده شد.")
-    except Exception as e:
-        await message.reply(f"⚠️ وضعیت رد سفارش ثبت شد اما ارسال پیام به کاربر با خطا مواجه شد: {e}")

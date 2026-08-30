@@ -1,4 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # منوی اصلی کاربر
 main_keyboard = ReplyKeyboardMarkup(
@@ -29,12 +30,18 @@ admin_main_keyboard = ReplyKeyboardMarkup(
 )
 
 # کیبورد عملیاتی هر سفارش در صف ادمین
-def get_order_process_keyboard(order_id: int):
+def get_order_process_keyboard(order_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="🚀 ارسال کانفیگ", callback_data=f"process_send_config:{order_id}"),
-                InlineKeyboardButton(text="❌ رد سفارش", callback_data=f"process_reject_order:{order_id}")
+                InlineKeyboardButton(
+                    text="✅ ارسال کانفیگ",
+                    callback_data=f"process_send_config:{order_id}"
+                ),
+                InlineKeyboardButton(
+                    text="❌ رد سفارش",
+                    callback_data=f"process_reject:{order_id}"
+                )
             ]
         ]
     )
