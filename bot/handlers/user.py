@@ -41,6 +41,9 @@ async def show_plans(message: types.Message):
 
 @user_router.callback_query(F.data.startswith("buy_plan:"))
 async def process_plan_selection(callback: types.CallbackQuery, state: FSMContext):
+    # همیشه در همان ابتدا پاسخ callback داده شود تا دکمه از حالت قفل/ساعت‌شنی خارج شود
+    await callback.answer()
+
     user = callback.from_user
     if not user or not callback.message or not callback.data:
         return
@@ -48,32 +51,40 @@ async def process_plan_selection(callback: types.CallbackQuery, state: FSMContex
     if not isinstance(callback.message, types.Message):
         return
 
-    _, plan_id, price = callback.data.split(":")
-    
-    order_id = await create_order(
-        user_id=user.id,
-        username=user.username or "",
-        plan_name=plan_id,
-        price=price
-    )
-    
-    await state.update_data(order_id=order_id)
-    await state.set_state(BuyState.waiting_for_receipt)
-    
-    card_number = os.getenv("CARD_NUMBER", "6037-9999-9999-9999")
-    card_owner = os.getenv("CARD_OWNER", "نام صاحب کارت")
-    
-    text = (
-        f"💳 **فاکتور پرداخت**\n\n"
-        f"🔹 **پلن:** {plan_id}\n"
-        f"🔹 **مبلغ:** {int(price):,} تومان\n\n"
-        f"لطفاً مبلغ را به کارت زیر واریز کرده و **تصویر فیش واریزی** را ارسال کنید:\n\n"
-        f"📌 شماره کارت:\n`{card_number}`\n"
-        f"👤 به نام: {card_owner}"
-    )
-    await callback.message.edit_text(text, parse_mode="Markdown")
-    await callback.answer()
+    try:
+        # دریافت اطلاعات پلن
+        parts = callback.data.split(":")
+        if len(parts) != 3:
+            return
+        
+        _, plan_id, price = parts
+        
+        order_id = await create_order(
+            user_id=user.id,
+            username=user.username or "",
+            plan_name=plan_id,
+            price=price
+        )
+        
+        await state.update_data(order_id=order_id)
+        await state.set_state(BuyState.waiting_for_receipt)
+        
+        card_number = os.getenv("CARD_NUMBER", "6037-9999-9999-9999")
+        card_owner = os.getenv("CARD_OWNER", "نام صاحب کارت")
+        
+        text = (
+            f"💳 **فاکتور پرداخت**\n\n"
+            f"🔹 **پلن:** {plan_id}\n"
+            f"🔹 **مبلغ:** {int(price):,} تومان\n\n"
+            f"لطفاً مبلغ را به کارت زیر واریز کرده و **تصویر فیش واریزی** را ارسال کنید:\n\n"
+            f"📌 شماره کارت:\n`{card_number}`\n"
+            f"👤 به نام: {card_owner}"
+        )
+        await callback.message.edit_text(text, parse_mode="Markdown")
 
+    except Exception as e:
+        print(f"Error in process_plan_selection: {e}")
+        await callback.message.answer("⚠️ خطایی در ثبت فاکتور رخ داد. لطفاً دوباره تلاش کنید.")
 @user_router.message(BuyState.waiting_for_receipt, F.photo)
 async def process_receipt(message: types.Message, state: FSMContext):
     user = message.from_user
