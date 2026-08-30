@@ -1,79 +1,94 @@
-import sqlite3
+import os
 from datetime import datetime
+from sqlalchemy import BigInteger, String, DateTime, func, select, update
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-DB_PATH = "shop.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./shop.db")
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            username TEXT,
-            plan_name TEXT NOT NULL,
-            price TEXT NOT NULL,
-            receipt_file_id TEXT,
-            config_link TEXT,
-            status TEXT DEFAULT 'pending_payment', -- pending_payment, pending_config, completed, canceled
-            created_at TEXT
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+engine = create_async_engine(DATABASE_URL, echo=False)
+async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+class Base(DeclarativeBase):
+    pass
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    full_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    plan_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price: Mapped[str] = mapped_column(String(50), nullable=False)
+    receipt_file_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    config_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="pending_payment")
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+# استفاده از str | None به جای str
+async def add_or_update_user(telegram_id: int, username: str | None = None, full_name: str | None = None):
+   
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            new_user = User(telegram_id=telegram_id, username=username, full_name=full_name)
+            session.add(new_user)
+        else:
+            user.username = username
+            user.full_name = full_name
+        await session.commit()
+
+async def create_order(user_id: int, username: str, plan_name: str, price: str) -> int:
+    async with async_session() as session:
+        new_order = Order(user_id=user_id, username=username, plan_name=plan_name, price=price)
+        session.add(new_order)
+        await session.commit()
+        await session.refresh(new_order)
+        return new_order.id
+
+async def update_order_receipt(order_id: int, receipt_file_id: str):
+    async with async_session() as session:
+        await session.execute(
+            update(Order)
+            .where(Order.id == order_id)
+            .values(receipt_file_id=receipt_file_id, status="pending_config")
         )
-    ''')
-    conn.commit()
-    conn.close()
+        await session.commit()
 
-def create_order(user_id: int, username: str, plan_name: str, price: str) -> int:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    cursor.execute('''
-        INSERT INTO orders (user_id, username, plan_name, price, created_at)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (user_id, username, plan_name, price, now))
-    
-    order_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    if order_id is None:
-        raise ValueError("خطا در ثبت سفارش؛ شناسه سفارش تولید نشد.")
-        
-    return int(order_id)
+async def set_order_completed(order_id: int, config_link: str):
+    async with async_session() as session:
+        await session.execute(
+            update(Order)
+            .where(Order.id == order_id)
+            .values(config_link=config_link, status="completed")
+        )
+        await session.commit()
 
-def update_order_receipt(order_id: int, receipt_file_id: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE orders 
-        SET receipt_file_id = ?, status = 'pending_config' 
-        WHERE id = ?
-    ''', (receipt_file_id, order_id))
-    conn.commit()
-    conn.close()
+async def get_order(order_id: int):
+    async with async_session() as session:
+        result = await session.execute(select(Order).where(Order.id == order_id))
+        return result.scalar_one_or_none()
 
-def set_order_completed(order_id: int, config_link: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE orders 
-        SET config_link = ?, status = 'completed' 
-        WHERE id = ?
-    ''', (config_link, order_id))
-    conn.commit()
-    conn.close()
-
-def get_order(order_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, user_id, username, plan_name, price, receipt_file_id, config_link, status FROM orders WHERE id = ?', (order_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-def get_user_orders(user_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, plan_name, status, config_link FROM orders WHERE user_id = ? AND status = "completed"', (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+async def get_user_orders(user_id: int):
+    async with async_session() as session:
+        result = await session.execute(
+            select(Order).where(Order.user_id == user_id, Order.status == "completed")
+        )
+        return result.scalars().all()
