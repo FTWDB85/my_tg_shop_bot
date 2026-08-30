@@ -54,12 +54,22 @@ async def add_or_update_user(telegram_id: int, username: str = "", full_name: st
 
 async def create_order(user_id: int, username: str, plan_name: str, price: str) -> int:
     async with async_session() as session:
-        new_order = Order(user_id=user_id, username=username, plan_name=plan_name, price=price)
-        session.add(new_order)
-        await session.commit()
-        await session.refresh(new_order)
-        return new_order.id
-
+        try:
+            new_order = Order(
+                user_id=user_id,
+                username=username,
+                plan_name=plan_name,
+                price=str(price),
+                status="pending_payment"
+            )
+            session.add(new_order)
+            await session.commit()
+            await session.refresh(new_order)
+            return new_order.id
+        except Exception as e:
+            await session.rollback()
+            print(f"❌ DATABASE ERROR in create_order: {e}")
+            raise e
 async def update_order_receipt(order_id: int, receipt_file_id: str):
     async with async_session() as session:
         await session.execute(
