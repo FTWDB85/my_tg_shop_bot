@@ -71,22 +71,23 @@ async def process_plan_selection(callback: types.CallbackQuery, state: FSMContex
         card_number = os.getenv("CARD_NUMBER", "6037-9999-9999-9999")
         card_owner = os.getenv("CARD_OWNER", "نام صاحب کارت")
         
-        # فرمت قیمت برای فاکتور
+        # فرمت قیمت
         formatted_price = f"{int(price):,}" if price.isdigit() else price
 
+        # استفاده از فرمت HTML برای جلوگیری از خطای پارسر تلگرام
         text = (
-            f"💳 **فاکتور پرداخت**\n\n"
-            f"🔹 **پلن:** {plan_id}\n"
-            f"🔹 **مبلغ:** {formatted_price} تومان\n\n"
-            f"لطفاً مبلغ را به کارت زیر واریز کرده و **تصویر فیش واریزی** را ارسال کنید:\n\n"
-            f"📌 شماره کارت:\n`{card_number}`\n"
+            f"💳 <b>فاکتور پرداخت</b>\n\n"
+            f"🔹 <b>پلن:</b> {plan_id}\n"
+            f"🔹 <b>مبلغ:</b> {formatted_price} تومان\n\n"
+            f"لطفاً مبلغ را به کارت زیر واریز کرده و <b>تصویر فیش واریزی</b> را ارسال کنید:\n\n"
+            f"📌 شماره کارت:\n<code>{card_number}</code>\n"
             f"👤 به نام: {card_owner}"
         )
-        await callback.message.edit_text(text, parse_mode="Markdown")
+        await callback.message.edit_text(text, parse_mode="HTML")
 
     except Exception as e:
         import traceback
-        print("❌ CRITICAL ERROR IN process_plan_selection:")
+        print("❌ ERROR IN process_plan_selection:")
         traceback.print_exc()
         await callback.message.answer("⚠️ خطایی در ثبت فاکتور رخ داد. لطفاً دوباره تلاش کنید.")
 @user_router.message(BuyState.waiting_for_receipt, F.photo)
