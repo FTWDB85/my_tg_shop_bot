@@ -22,7 +22,7 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 class BuyState(StatesGroup):
     waiting_for_receipt = State()
 
-@user_router.message(F.text == "❌ لغو")
+@user_router.message(F.text == "❌ انصراف")
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
@@ -37,7 +37,7 @@ async def cancel_order_callback(callback: types.CallbackQuery, state: FSMContext
     await callback.answer("عملیات لغو شد.")
     if isinstance(callback.message, types.Message):
         await callback.message.answer("❌ سفارش لغو شد. به منوی اصلی بازگشتید.", reply_markup=main_keyboard)
-        
+
 @user_router.message(CommandStart())
 async def cmd_start(message: types.Message):
     user = message.from_user
