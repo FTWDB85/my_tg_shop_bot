@@ -186,7 +186,7 @@ async def show_account(message: types.Message):
 
     await message.answer(text, parse_mode="HTML")
 
-    # ---------- راهنما و نحوه اتصال ----------
+# ---------- راهنما و نحوه اتصال ----------
 @user_router.message(F.text == "📌 راهنما و نحوه اتصال")
 async def show_guide(message: types.Message):
     guide_text = (
@@ -200,7 +200,6 @@ async def show_guide(message: types.Message):
         "❓ در صورت وجود هرگونه مشکل، می‌توانید با پشتیبانی در ارتباط باشید."
     )
     await message.answer(guide_text, parse_mode="HTML")
-
 
 
 # ---------- پشتیبانی ----------
