@@ -202,16 +202,14 @@ async def show_guide(message: types.Message):
     await message.answer(guide_text, parse_mode="HTML")
 
 
+
 # ---------- پشتیبانی ----------
 @user_router.message(F.text == "👨‍💻 پشتیبانی")
 async def show_support(message: types.Message):
-    # آیدی پشتیبانی خود را در بخش زیر جایگزین کنید
-    support_id = os.getenv("SUPPORT_USERNAME", "YourSupportUsername")
-    
     support_text = (
         "👩‍💻 <b>پشتیبانی فنی</b>\n\n"
-        "در صورت بروز هرگونه مشکل، نداشتن اتصال یا سوال در مورد سفارش‌ها، "
-        "می‌توانید با آیدی زیر در ارتباط باشید:\n\n"
-        f"🆔 @{support_id}"
+        "در صورت بروز هرگونه مشکل، عدم اتصال یا سوال درباره سفارش‌ها، "
+        "می‌توانید با پشتیبانی در ارتباط باشید:\n\n"
+        "🆔 @FTWDB1"
     )
     await message.answer(support_text, parse_mode="HTML")
