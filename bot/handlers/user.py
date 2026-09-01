@@ -187,7 +187,7 @@ async def show_account(message: types.Message):
     await message.answer(text, parse_mode="HTML")
 
 # ---------- راهنما و نحوه اتصال ----------
-@user_router.message(F.text == "📌 راهنما و نحوه اتصال")
+@user_router.message(F.text.in_({"📚 راهنما و اتصال", "📌 راهنما و اتصال", "راهنما"}))
 async def show_guide(message: types.Message):
     guide_text = (
         "📚 <b>راهنمای اتصال به سرویس‌ها</b>\n\n"
@@ -203,7 +203,7 @@ async def show_guide(message: types.Message):
 
 
 # ---------- پشتیبانی ----------
-@user_router.message(F.text == "👨‍💻 پشتیبانی")
+@user_router.message(F.text.in_({"📞 پشتیبانی", "👨‍💻 پشتیبانی", "پشتیبانی"}))
 async def show_support(message: types.Message):
     support_text = (
         "👩‍💻 <b>پشتیبانی فنی</b>\n\n"
