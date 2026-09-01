@@ -1,6 +1,14 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+main_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🛒 خرید اشتراک"), KeyboardButton(text="👤 حساب کاربری / سرویس‌های من")],
+        [KeyboardButton(text="📌 راهنما و نحوه اتصال"), KeyboardButton(text="👨‍💻 پشتیبانی")]
+    ],
+    resize_keyboard=True
+)
 
 # منوی اصلی کاربر
 main_keyboard = ReplyKeyboardMarkup(

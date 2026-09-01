@@ -185,3 +185,33 @@ async def show_account(message: types.Message):
             text += f"🔹 پلن: <b>{p_name}</b>\n⏳ وضعیت: <i>در انتظار تایید فیش</i>\n-------------------\n"
 
     await message.answer(text, parse_mode="HTML")
+
+    # ---------- راهنما و نحوه اتصال ----------
+@user_router.message(F.text == "📌 راهنما و نحوه اتصال")
+async def show_guide(message: types.Message):
+    guide_text = (
+        "📚 <b>راهنمای اتصال به سرویس‌ها</b>\n\n"
+        "<b>📱 اندروید:</b>\n"
+        "برنامه <b>v2rayNG</b> را نصب کرده، لینک کانفیگ را کپی کنید و در برنامه دکمه <code>+</code> را زده و گزینه <b>Import clipboard</b> را انتخاب کنید.\n\n"
+        "<b>🍎 آیفون (iOS):</b>\n"
+        "برنامه <b>v2BOX</b> یا <b>Streisand</b> را از اپ‌استور دانلود کنید و لینک دریافتی را وارد نمائید.\n\n"
+        "<b>💻 ویندوز:</b>\n"
+        "از برنامه <b>v2rayN</b> استفاده کنید.\n\n"
+        "❓ در صورت وجود هرگونه مشکل، می‌توانید با پشتیبانی در ارتباط باشید."
+    )
+    await message.answer(guide_text, parse_mode="HTML")
+
+
+# ---------- پشتیبانی ----------
+@user_router.message(F.text == "👨‍💻 پشتیبانی")
+async def show_support(message: types.Message):
+    # آیدی پشتیبانی خود را در بخش زیر جایگزین کنید
+    support_id = os.getenv("SUPPORT_USERNAME", "YourSupportUsername")
+    
+    support_text = (
+        "👩‍💻 <b>پشتیبانی فنی</b>\n\n"
+        "در صورت بروز هرگونه مشکل، نداشتن اتصال یا سوال در مورد سفارش‌ها، "
+        "می‌توانید با آیدی زیر در ارتباط باشید:\n\n"
+        f"🆔 @{support_id}"
+    )
+    await message.answer(support_text, parse_mode="HTML")
