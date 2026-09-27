@@ -14,7 +14,8 @@ main_keyboard = ReplyKeyboardMarkup(
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🛒 خرید اشتراک"), KeyboardButton(text="👤 حساب کاربری / سرویس‌های من")],
-        [KeyboardButton(text="📚 راهنما و اتصال"), KeyboardButton(text="📞 پشتیبانی")]
+        [KeyboardButton(text="📚 راهنما و اتصال"), KeyboardButton(text="📞 پشتیبانی")],
+        [KeyboardButton(text="گروه کامنتای برنامه کلاسی")]
     ],
     resize_keyboard=True
 )
